@@ -1,0 +1,4 @@
+prompt_tokens,repeats,prefill_tok_s_mean,decode_tok_s_mean,ttft_ms_mean,peak_gpu0_mib,peak_gpu1_mib,context,generated_tokens,correctness
+16384,3,3893.786,82.948,4207.735,30102,28900,262144,255,passed_separately
+32768,3,4760.885,81.870,6882.755,31918,29800,262144,255,passed_separately
+261888,1,4454.005,74.875,58798.319,32076,29860,262144,255,passed_separately

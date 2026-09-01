@@ -1,0 +1,15 @@
+[Unit]
+Description=Qwen3.8 Flash Next official FP8 FreeToken EP2 server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/models/qwen3.8-flash-freetoken
+Environment=QWEN38_CONFIG=/home/USER/.config/qwen38-flash-freetoken.env
+ExecStart=/home/USER/models/qwen3.8-flash-freetoken/scripts/run.sh
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=120
+
+[Install]
+WantedBy=default.target
