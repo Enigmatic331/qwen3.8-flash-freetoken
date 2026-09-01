@@ -1,0 +1,4 @@
+prompt_tokens,repeats,prefill_tok_s_mean,decode_tok_s_mean,ttft_ms_mean,peak_gpu0_mib,context,generated_tokens,correctness,scheduler_chunk
+16384,3,3728.290,73.895,4394.507,30068,262144,255,passed_separately,32768
+32768,3,3742.945,67.561,8754.607,30126,262144,255,passed_separately,16384
+261888,1,3720.845,60.244,70384.021,30126,262144,255,passed_separately,16384

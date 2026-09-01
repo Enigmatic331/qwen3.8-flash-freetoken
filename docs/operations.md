@@ -31,6 +31,10 @@ Performance without these gates is not an accepted result.
 - MTP: off
 - RTX 4080: unused
 
+For a TP1 fallback with full KV, use a 2,048-slot expert cache and a 16,384-token
+scheduler ceiling. A 32K TP1 tile is not accepted on a 32 GiB 5090; it OOMed with only
+about 91 MiB free when requesting another 160 MiB expert buffer.
+
 ## Service boundaries
 
 Stopping this model must not be interpreted as stopping Open WebUI, its ingress, or

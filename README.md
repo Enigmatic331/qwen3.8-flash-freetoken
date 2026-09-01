@@ -55,6 +55,23 @@ Correctness was accepted only after 27 targeted CUDA/model tests, 12/12 determin
 semantic probes, three 10,762-token tiled retrievals, and a byte-identical 1,023-token
 TP1 pagoda trace (`6c6ae9e08ecd1bc6714873b807d87edfd7176239`).
 
+### Final one-GPU control
+
+The same commit was also gated as true TP1 with a 2,048-slot cache and full KV. A 32K
+single scheduler chunk OOMed on a 160 MiB expert allocation, so the accepted TP1
+ceiling is 16K. It still reaches the full context by scheduling multiple chunks.
+
+| Prompt | TP1 prefill | EP2 prefill | TP1 decode | EP2 decode |
+| ---: | ---: | ---: | ---: | ---: |
+| 16,384 | 3,728.29 | 3,893.79 | 73.90 | 82.95 |
+| 32,768 | 3,742.94 | 4,760.89 | 67.56 | 81.87 |
+| 261,888 | 3,720.85 | 4,454.01 | 60.24 | 74.88 |
+
+EP2's advantage grows with prompt length: +27.2% prefill and +21.2% decode at 32K,
+and +19.7%/+24.3% at the pool ceiling. On the miss-heavy pagoda replay, EP2 is about
+89.7% faster (44.95 versus 23.70 tok/s). This is the practical value of the second
+5090 beyond merely fitting the workload.
+
 ## Deploy
 
 1. Clone the pinned FreeToken fork and check out the revision above.
