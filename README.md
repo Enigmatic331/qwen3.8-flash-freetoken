@@ -1,9 +1,9 @@
 # Qwen3.8 Flash Next on FreeToken
 
 Reproducible production profile for the official Qwen3.8-Flash-Next FP8 checkpoint
-on two RTX 5090s. The Qwen backbone stays whole on GPU0, while the 512 routed experts
-are split 256/256 across GPU0 and GPU1. The 47.7 GiB PLE table and streamed expert
-banks live in host RAM. GPU2 is intentionally unused.
+on two RTX 5090s, with multimodal vision preprocessing on an RTX 4080. The Qwen
+backbone stays whole on GPU0, while the 512 routed experts are split 256/256 across
+GPU0 and GPU1. The 47.7 GiB PLE table and streamed expert banks live in host RAM.
 
 This repository contains deployment configuration, operational checks, and accepted
 benchmark evidence. It does **not** contain or automatically download model weights,
@@ -14,7 +14,7 @@ driver binaries, credentials, or Open WebUI data.
 - Model: `Qwen/Qwen3.8-Flash-Next-FP8`
 - Model revision: `236dfdf285828023ca3bcd3f37366c58a3469b13`
 - FreeToken fork: <https://github.com/Enigmatic331/FreeToken/tree/qwen38-ep2>
-- FreeToken revision: `15e3a7b9b626d739f73419af1d381275d964005e`
+- FreeToken revision: `58dd7c20b5cc3960642cee73d404d1273d4ed4b7`
 - P2P driver source: <https://github.com/Enigmatic331/open-gpu-kernel-modules/tree/610.43.02-p2p-qwen-lab>
 - P2P driver revision: `64b8c7ed55ab9c5a34717380fd1f5048b1d7218d`
 
@@ -27,9 +27,10 @@ The custom driver is specific to this lab. Do not install it blindly; read
 GPU0 RTX 5090: backbone, shared experts, routed experts 0..255, 2,048 cache slots
 GPU1 RTX 5090: routed experts 256..511, 4,096 cache slots
 CPU RAM:       47.7 GiB PLE plus both streamed FP8 expert banks
-GPU2 RTX 4080: unused by the model
+GPU2 RTX 4080: native Qwen vision encoder/projection only
 Transport:     exact packed BF16 routes over direct 5090-to-5090 CUDA P2P
-KV:            full 262,144-token pool; MTP off
+KV:            full 262,144-token hybrid-radix pool; MTP off
+Prefill:       cache-resident expert rows reused device-to-device
 ```
 
 The exact ordered route reducer is a correctness requirement. Earlier rank-local BF16
@@ -46,7 +47,12 @@ One warmup plus three warm 255-token measured generations, batch one:
 | 32,768 | 4,760.89 | 81.87 | 6.883 s |
 | 261,888 | 4,454.01 | 74.88 | 58.798 s |
 
-The final row reaches the exact 262,144-token pool ceiling after generation. Peak
+These historical 32K-chunk performance rows were measured on revision `15e3a7b`.
+Production now uses a 16,384-token scheduler ceiling: longer prompts retain the same
+full context but are split into memory-safe scheduler passes. Fresh-prefix production
+probes at the current revision completed 25,031 tokens at 6.66 s TTFT and 32,731 tokens
+at 8.09–8.10 s TTFT without increasing steady-state VRAM. The final row reaches the exact
+262,144-token pool ceiling after generation. Peak
 residency was 32,076 MiB on GPU0 and 29,860 MiB on GPU1, process-tree RSS was about
 171.4 GiB, and measured disk reads were zero. The miss-heavy pagoda replay decodes at
 about 45 tok/s; synthetic prompts are substantially more cache-friendly.
@@ -82,7 +88,7 @@ and +19.7%/+24.3% at the pool ceiling. On the miss-heavy pagoda replay, EP2 is a
 5. Run `scripts/preflight.sh`, then `scripts/run.sh`.
 6. Run `scripts/smoke-test.sh` before exposing the endpoint to Open WebUI.
 
-The launcher defaults to `172.17.0.1:1919` so a Dockerized Open WebUI can reach it
+The launcher defaults to `172.17.0.1:8080` so a Dockerized Open WebUI can reach it
 without exposing the model API to the LAN. Review firewall rules for your host.
 
 For a user service, copy `systemd/qwen38-flash-freetoken.service` into
@@ -92,9 +98,11 @@ start it. It is intentionally not enabled automatically.
 ## Rollback controls
 
 - Disable only the new send overlap: `EP2_PACKED_ASYNC_SEND=0`
-- Restore the earlier 16K scheduler geometry:
-  `EP2_MAX_PREFILL_LENGTH=16384 EP2_GDN_PREFILL_TILE_TOKENS=0 EP2_PREFILL_ROUTE_TILE_TOKENS=0`
-- Stop this model before starting another service that owns GPU0 or port 1919.
+- Disable prefill expert-row reuse: `EP2_MOE_PREFILL_HIT_D2D=0`
+- Keep `EP2_MAX_PREFILL_LENGTH=16384` for the memory-safe production geometry. It does
+  not reduce the 262,144-token context; it only splits longer prefills into more passes.
+- Stop this model before starting another service that owns GPU0/GPU1, vision GPU2,
+  or port 8080.
 
 See [`docs/operations.md`](docs/operations.md) for the production checklist and
 [`results/accepted.csv`](results/accepted.csv) for raw accepted rows.

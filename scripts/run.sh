@@ -53,25 +53,33 @@ export FREETOKEN_EP_PREFILL_ROUTE_TILE_TOKENS="${EP2_PREFILL_ROUTE_TILE_TOKENS:-
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
+extra_args=()
+if [[ "${EP2_MOE_PREFILL_HIT_D2D:-1}" == "1" ]]; then
+  extra_args+=(--moe-prefill-hit-d2d)
+fi
+
 exec "$FREETOKEN_PYTHON" -m freetoken.cli serve \
   --model "$MODEL_PATH" \
-  --served-model-name "${EP2_SERVED_MODEL_NAME:-qwen38-flash-next-fp8-ep2}" \
+  --served-model-name "${EP2_SERVED_MODEL_NAME:-qwen3.8-flash}" \
   --host "${EP2_HOST:-172.17.0.1}" \
-  --port "${EP2_PORT:-1919}" \
+  --port "${EP2_PORT:-8080}" \
   --gpu 0,1 \
   --tp-size 2 \
   --qwen4-exp-backbone-rank 0 \
+  --vision-device "${EP2_VISION_DEVICE:-2}" \
   --max-running-requests 1 \
   --max-seq-len-override "${EP2_CONTEXT:-262144}" \
   --num-tokens "${EP2_KV_TOKENS:-262144}" \
-  --max-prefill-length "${EP2_MAX_PREFILL_LENGTH:-32768}" \
+  --max-prefill-length "${EP2_MAX_PREFILL_LENGTH:-16384}" \
   --memory-ratio 0.90 \
   --cuda-graph-max-bs 1 \
-  --cache-type naive \
+  --cache-type "${EP2_CACHE_TYPE:-radix}" \
+  --enable-cache-report \
   --moe-backend offload \
   --expert-load parallel \
   --moe-cache-sizes "${EP2_MOE_CACHE_SIZES:-2048,4096}" \
   --moe-collect-stats \
+  "${extra_args[@]}" \
   --sampling-defaults none \
   --reasoning-parser qwen3 \
   --decode-log-interval 32

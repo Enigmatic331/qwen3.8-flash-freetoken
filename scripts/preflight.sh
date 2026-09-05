@@ -31,6 +31,11 @@ if [[ "$actual_revision" != "$FREETOKEN_REVISION" ]]; then
   fail=1
 fi
 
+if ! nvidia-smi -i "${EP2_VISION_DEVICE:-2}" --query-gpu=name --format=csv,noheader >/dev/null; then
+  echo "VISION: GPU ${EP2_VISION_DEVICE:-2} is unavailable" >&2
+  fail=1
+fi
+
 shopt -s nullglob
 shards=("$MODEL_PATH"/model-*.safetensors)
 if (( ${#shards[@]} != MODEL_SHARDS )); then

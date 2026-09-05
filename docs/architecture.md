@@ -18,16 +18,20 @@ preserves communicator order before the next layer's broadcasts. The measured pr
 gain is 0.5–0.9%; this is useful but should not be described as eliminating route
 communication.
 
-The 32K scheduler is made possible by bounding single-sequence GDN recurrence and the
-exact ten-route working tensor to 8K tiles while keeping each expert layer materialized
-once. PLE avoids a redundant single-request identity gather. Neither change reduces
-the 262,144-token KV pool.
+Single-sequence GDN recurrence and the exact ten-route working tensor are bounded to
+8K tiles while each expert layer stays materialized once. Even with those inner tiles,
+a 25K outer scheduler chunk can exhaust rank 0 after production caches and vision are
+warm. The production scheduler ceiling is therefore 16K. Longer prompts use multiple
+scheduler passes; this does not reduce the 262,144-token KV pool. PLE also avoids a
+redundant single-request identity gather.
 
 Direct P2P requires the separately maintained source-patched NVIDIA open driver. The
 accepted build enabled byte-correct 5090-to-5090 copies at about 28.2 GB/s one-way and
 55.7 GB/s bidirectional. NCCL all-to-all at 256 MiB improved from 5.41 GB/s host-staged
 to 47.67 GB/s. The RTX 4080 pairings remain CUDA-ineligible for peer access and are
-outside this topology.
+outside the EP2 transport topology. Multimodal serving deliberately assigns the
+native Qwen vision encoder and projection path to that 4080; it does not participate
+in expert routing.
 
 After any driver, firmware, BIOS, GPU-slot, or kernel change, revalidate peer access
 and byte correctness before serving the model. Keep a TTY-tested rollback procedure;
