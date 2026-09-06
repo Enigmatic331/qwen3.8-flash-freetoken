@@ -33,6 +33,12 @@ Performance without these gates is not an accepted result.
 - Prompt cache: hybrid-radix with cache accounting enabled
 - MoE prefill: resident expert rows reused device-to-device (CUDA 13)
 
+Long multimodal decoder prompts are chunked at the same 16,384-token boundary. Each
+pass receives only the vision features for image placeholders in that token slice.
+Cross-request multimodal prefix reuse remains disabled because placeholder token IDs
+do not identify image content; intermediate chunks still retain their request-local KV
+state. Do not set the scheduler chunk to the 262,144-token KV capacity.
+
 Keep the same 16,384-token ceiling for EP2 production and TP1 fallback. A cold 25K EP2
 continuation OOMed rank 0 in the GDN state workspace after production caches were warm;
 the 16K ceiling passed repeated cold 25K/32K probes and a post-vision 25K probe. A 32K

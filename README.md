@@ -14,7 +14,7 @@ driver binaries, credentials, or Open WebUI data.
 - Model: `Qwen/Qwen3.8-Flash-Next-FP8`
 - Model revision: `236dfdf285828023ca3bcd3f37366c58a3469b13`
 - FreeToken fork: <https://github.com/Enigmatic331/FreeToken/tree/qwen38-ep2>
-- FreeToken revision: `58dd7c20b5cc3960642cee73d404d1273d4ed4b7`
+- FreeToken revision: `0742097e8c2d96422beaea7d2f1fc44aa5fde38b`
 - P2P driver source: <https://github.com/Enigmatic331/open-gpu-kernel-modules/tree/610.43.02-p2p-qwen-lab>
 - P2P driver revision: `64b8c7ed55ab9c5a34717380fd1f5048b1d7218d`
 
@@ -56,6 +56,12 @@ at 8.09–8.10 s TTFT without increasing steady-state VRAM. The final row reache
 residency was 32,076 MiB on GPU0 and 29,860 MiB on GPU1, process-tree RSS was about
 171.4 GiB, and measured disk reads were zero. The miss-heavy pagoda replay decodes at
 about 45 tok/s; synthetic prompts are substantially more cache-friendly.
+
+Multimodal decoder prefills use the same chunking rule. An Open WebUI request with a
+real image, its production tool schema, and 24,379 decoder tokens completed as 16,384
+and 7,995-token scheduler passes with a correct image-grounded answer. The vision
+features are sliced to the image placeholders in each pass; the scheduler does not
+raise its physical prefill ceiling to the full KV capacity.
 
 Correctness was accepted only after 27 targeted CUDA/model tests, 12/12 deterministic
 semantic probes, three 10,762-token tiled retrievals, and a byte-identical 1,023-token
